@@ -8,14 +8,9 @@ Repo: **https://github.com/sahithchiluveru/Shabit** (public, default branch `mai
 The `origin` remote is configured, so `gh` resolves this repo automatically and every
 command below works as written.
 
-Remaining: the five triage labels are not created yet. Run once, per
-`triage-labels.md`:
-
-```
-for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do
-  gh label create "$l"
-done
-```
+All five triage labels exist (see `triage-labels.md`). `wontfix` is GitHub's
+built-in default label, reused rather than duplicated; the other four were created
+for this repo.
 
 ## Conventions
 
