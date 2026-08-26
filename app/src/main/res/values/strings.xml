@@ -1,4 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Shabit</string>
+
+    <string name="add_habit">Add habit</string>
+    <string name="habit_options">Habit options</string>
+    <string name="edit">Edit</string>
+    <string name="archive">Archive</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="check_today">Mark today complete</string>
+    <string name="uncheck_today">Mark today incomplete</string>
+    <string name="tile_done">%1$s, done</string>
+    <string name="tile_not_done">%1$s, not done</string>
+
+    <string name="delete_habit_title">Delete %1$s?</string>
+    <string name="delete_habit_message">This also deletes its whole grid. Archive instead if you want to keep the history.</string>
+
+    <string name="empty_title">No habits yet</string>
+    <string name="empty_body">Add your first habit and start filling the grid.</string>
+    <string name="habit_cap_note">Four habits is the limit. Archive one to free a slot — its grid is kept.</string>
 </resources>
