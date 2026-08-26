@@ -7,8 +7,13 @@ android {
     namespace = "com.sahith.shabit"
 
     // AGP 9 takes SDK levels as blocks rather than scalars.
+    //
+    // compileSdk is 37 rather than the 36 named in #2: Compose 1.12 (from the
+    // BOM below) refuses to be consumed by anything compiling against 36.
+    // compileSdk only decides which APIs are visible at compile time —
+    // targetSdk, which opts into new runtime behaviour, stays at 36.
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {
