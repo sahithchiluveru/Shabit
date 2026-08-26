@@ -1,17 +1,24 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.sahith.shabit"
-    compileSdk = 36
+
+    // AGP 9 takes SDK levels as blocks rather than scalars.
+    compileSdk {
+        version = release(36)
+    }
 
     defaultConfig {
         applicationId = "com.sahith.shabit"
-        minSdk = 26
-        targetSdk = 36
+        minSdk {
+            version = release(26)
+        }
+        targetSdk {
+            version = release(36)
+        }
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -29,20 +36,14 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     buildFeatures {
         compose = true
     }
-}
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
+    // Java/Kotlin target levels are deliberately left at AGP's defaults. With
+    // built-in Kotlin, AGP keeps the Java and Kotlin targets in step; setting
+    // only one of them is how you get "Inconsistent JVM-target compatibility".
+    // minSdk 26 means java.time is available natively, so no desugaring.
 }
 
 dependencies {

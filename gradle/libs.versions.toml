@@ -1,9 +1,12 @@
 [versions]
-# Toolchain — Kotlin held at 2.3.x because KSP (needed by Room in #3)
-# has no 2.4.x release yet; latest KSP is 2.3.11.
+# AGP 9 has built-in Kotlin support: it applies the Kotlin Gradle plugin
+# itself, so the Kotlin version is dictated by AGP, not chosen here.
+# AGP 9.3.2 bundles KGP 2.2.10 (verified in its POM), so the Compose
+# compiler plugin and KSP must both match 2.2.10 or the compiler versions
+# disagree. 2.2.10-2.0.2 is the KSP release AGP 9 pins to.
 agp = "9.3.2"
-kotlin = "2.3.21"
-ksp = "2.3.11"
+kotlin = "2.2.10"
+ksp = "2.2.10-2.0.2"
 
 # AndroidX
 coreKtx = "1.19.0"
@@ -44,6 +47,5 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
