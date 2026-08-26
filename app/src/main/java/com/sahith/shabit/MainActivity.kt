@@ -4,18 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sahith.shabit.ui.dashboard.DashboardScreen
+import com.sahith.shabit.ui.dashboard.DashboardViewModel
 import com.sahith.shabit.ui.theme.ShabitTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,33 +19,32 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ShabitTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { insets ->
-                    Placeholder(modifier = Modifier.padding(insets))
-                }
+                Dashboard()
             }
         }
     }
 }
 
-/** Stands in for the dashboard until #4 replaces it. */
 @Composable
-private fun Placeholder(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = "Shabit", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            text = "No habits yet.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
+private fun Dashboard(
+    viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-@Preview
-@Composable
-private fun PlaceholderPreview() {
-    ShabitTheme { Placeholder() }
+    // Coming back to the app after 4am has to move every grid's anchor column along.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshToday()
+        onPauseOrDispose {}
+    }
+
+    DashboardScreen(
+        state = state,
+        onToggle = viewModel::toggle,
+        // Creating and editing a habit is #5; until that screen exists there is nowhere
+        // for these to go. The cap logic behind the + button is live either way.
+        onAddHabit = {},
+        onEditHabit = {},
+        onArchiveHabit = viewModel::archive,
+        onDeleteHabit = viewModel::delete,
+    )
 }
