@@ -84,6 +84,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    // Glance renders the widget through RemoteViews. It is a separate Compose-like
+    // runtime, not the Compose in the app above — the two share no composables, which is
+    // why the widget redraws the same grid rather than reusing HabitGrid.
+    implementation(libs.androidx.glance.appwidget)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

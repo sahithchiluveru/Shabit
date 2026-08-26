@@ -2,6 +2,8 @@ package com.sahith.shabit.data
 
 import android.content.Context
 import androidx.room.withTransaction
+import androidx.glance.appwidget.updateAll
+import com.sahith.shabit.widget.ShabitWidget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
@@ -14,10 +16,17 @@ import java.time.LocalDate
  * about what a completion is.
  *
  * The [clock] is injectable so tests can pin "now"; production uses the system zone.
+ *
+ * @param onDataChanged run after every write that lands. In production this redraws the
+ *   widget: Glance only collects these flows while its session is alive, so a change made
+ *   in the app while the home screen is elsewhere would otherwise leave the last
+ *   `RemoteViews` on display until something else happened to refresh them. Tests leave it
+ *   as the no-op it defaults to.
  */
 class HabitRepository(
     private val database: ShabitDatabase,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val onDataChanged: suspend () -> Unit = {},
 ) {
     private val habits = database.habitDao()
     private val completions = database.completionDao()
@@ -59,6 +68,7 @@ class HabitRepository(
                 completions.insert(Completion(habitId, date))
             }
         }
+        onDataChanged()
     }
 
     /** One habit by id, or null once it has been deleted. */
@@ -73,7 +83,7 @@ class HabitRepository(
      */
     suspend fun create(habit: Habit): Long? = database.withTransaction {
         if (habits.activeCount() >= MAX_ACTIVE_HABITS) null else habits.insert(habit)
-    }
+    }.also { onDataChanged() }
 
     /**
      * Edit the four fields the add/edit screen owns. [Habit.createdDate] and the habit's
@@ -85,10 +95,16 @@ class HabitRepository(
         description: String,
         iconKey: String,
         colorHex: String,
-    ) = habits.updateDetails(habitId, name, description, iconKey, colorHex)
+    ) {
+        habits.updateDetails(habitId, name, description, iconKey, colorHex)
+        onDataChanged()
+    }
 
     /** Frees one of the four active slots. The grid is kept — this is not a soft delete. */
-    suspend fun archive(habitId: Long) = habits.setArchivedAt(habitId, Instant.now(clock))
+    suspend fun archive(habitId: Long) {
+        habits.setArchivedAt(habitId, Instant.now(clock))
+        onDataChanged()
+    }
 
     /**
      * Return an archived habit to the dashboard, or refuse with false when all four slots
@@ -102,10 +118,13 @@ class HabitRepository(
             habits.setArchivedAt(habitId, null)
             true
         }
-    }
+    }.also { onDataChanged() }
 
     /** Destroys the habit *and* its history. Confirm with the user before calling this. */
-    suspend fun delete(habitId: Long) = habits.delete(habitId)
+    suspend fun delete(habitId: Long) {
+        habits.delete(habitId)
+        onDataChanged()
+    }
 
     /** How many of the four slots are taken. */
     suspend fun activeCount(): Int = habits.activeCount()
@@ -117,10 +136,21 @@ class HabitRepository(
         @Volatile
         private var instance: HabitRepository? = null
 
-        fun getInstance(context: Context): HabitRepository =
-            instance ?: synchronized(this) {
-                instance ?: HabitRepository(ShabitDatabase.getInstance(context))
-                    .also { instance = it }
+        /**
+         * The one repository the app process shares, widget included.
+         *
+         * This is the only place the data package names anything in the UI, and it is
+         * deliberate: the repository is the single door every write goes through, so it is
+         * also the only place that can promise the widget hears about all of them.
+         */
+        fun getInstance(context: Context): HabitRepository {
+            val application = context.applicationContext
+            return instance ?: synchronized(this) {
+                instance ?: HabitRepository(
+                    database = ShabitDatabase.getInstance(application),
+                    onDataChanged = { ShabitWidget.updateAll(application) },
+                ).also { instance = it }
             }
+        }
     }
 }
