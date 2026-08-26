@@ -4,6 +4,21 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+/**
+ * The release keystore, or null on any machine that has not been given one.
+ *
+ * It arrives as a path in the environment rather than a file in the tree or a
+ * `keystore.properties`, because the repo is public and the only place the real
+ * keystore exists is a GitHub secret that `release.yml` decodes to a temp file.
+ * Absent — which is every local build — release falls back to debug signing, so
+ * `assembleRelease` still works for a smoke test; it just produces an APK that
+ * can never be installed over a real one.
+ */
+val releaseKeystore = System.getenv("SHABIT_KEYSTORE")
+    ?.takeIf { it.isNotBlank() }
+    ?.let { file(it) }
+    ?.takeIf { it.exists() }
+
 android {
     namespace = "com.sahith.shabit"
 
@@ -25,16 +40,36 @@ android {
         targetSdk {
             version = release(36)
         }
+        // Bumped by hand, in a commit, before the tag that ships it: `release.yml`
+        // refuses to build a tag whose name does not match versionName. Two releases
+        // must never share a versionCode — Android takes it as the same build.
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("SHABIT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SHABIT_KEY_ALIAS")
+                keyPassword = System.getenv("SHABIT_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // Minification stays off until #8, which owns release signing and
-            // is responsible for verifying Room and Glance keep rules. Enabling
-            // R8 here would ship config that no CI job actually exercises.
-            isMinifyEnabled = false
+            // Falling back to debug signing keeps a local `assembleRelease` working.
+            // CI must never take that branch — an APK signed with the debug key cannot
+            // be installed over a real one, and the only way out of that on a phone is
+            // uninstall, which takes every habit with it. `release.yml` checks the
+            // signer of the APK it is about to publish for exactly this reason.
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
+
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
