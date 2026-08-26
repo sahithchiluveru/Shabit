@@ -49,8 +49,31 @@ class HabitRepository(
         }
     }
 
-    /** Insert a new habit, or update an existing one in place when [Habit.id] is set. */
-    suspend fun upsert(habit: Habit) = habits.upsert(habit)
+    /** One habit by id, or null once it has been deleted. */
+    suspend fun habit(habitId: Long): Habit? = habits.habit(habitId)
+
+    /**
+     * Insert a new habit and return its id, or null when all four slots are already taken.
+     *
+     * The count and the insert share a transaction because the cap is a real invariant, not
+     * a UI nicety: the dashboard's disabled + button is the polite refusal, and this is the
+     * one that actually holds when something bypasses it.
+     */
+    suspend fun create(habit: Habit): Long? = database.withTransaction {
+        if (habits.activeCount() >= MAX_ACTIVE_HABITS) null else habits.insert(habit)
+    }
+
+    /**
+     * Edit the four fields the add/edit screen owns. [Habit.createdDate] and the habit's
+     * completions are untouchable from here by construction — see [HabitDao.updateDetails].
+     */
+    suspend fun updateDetails(
+        habitId: Long,
+        name: String,
+        description: String,
+        iconKey: String,
+        colorHex: String,
+    ) = habits.updateDetails(habitId, name, description, iconKey, colorHex)
 
     /** Frees one of the four active slots. The grid is kept — this is not a soft delete. */
     suspend fun archive(habitId: Long) = habits.setArchivedAt(habitId, Instant.now(clock))
