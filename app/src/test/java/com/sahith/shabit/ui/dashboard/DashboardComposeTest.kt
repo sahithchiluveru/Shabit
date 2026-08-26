@@ -110,11 +110,24 @@ class DashboardComposeTest {
     }
 
     @Test
-    fun `cells before the habit existed do not respond to taps`() {
+    fun `a day before the habit existed can still be filled in`() {
+        val toggled = mutableListOf<LocalDate>()
+        showCard(onToggle = { toggled += it })
+
+        val before = habit.createdDate.minusDays(1)
+        compose.onNodeWithTag(tileTag(before)).assertHasClickAction()
+        compose.onNodeWithTag(tileTag(before)).performClick()
+
+        assertEquals(listOf(before), toggled)
+    }
+
+    @Test
+    fun `the grid fills the card rather than stopping at the habit's first week`() {
+        // Three weeks old, but the card is far wider than three columns of tiles: the
+        // block runs the whole width, faded, from the very first day.
         showCard()
 
-        compose.onNodeWithTag(tileTag(habit.createdDate.minusDays(1))).assertHasNoClickAction()
-        compose.onNodeWithTag(tileTag(habit.createdDate)).assertHasClickAction()
+        compose.onNodeWithTag(tileTag(today.minusWeeks(8))).assertIsDisplayed()
     }
 
     @Test

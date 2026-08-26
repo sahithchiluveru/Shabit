@@ -59,45 +59,61 @@ class GridGeometryTest {
     }
 
     @Test
-    fun `cells before the habit existed are outside the grid`() {
-        val created = LocalDate.of(2026, 3, 11)
+    fun `a grid never has fewer columns than fit the card it is drawn on`() {
+        // Made this morning, but drawn on a card twenty columns wide: all twenty are there.
+        assertEquals(20, gridColumnCount(createdDate = sunday, today = sunday, columnsToFill = 20))
+    }
+
+    @Test
+    fun `a history longer than the card wins`() {
         assertEquals(
-            TileState.OUTSIDE,
-            tileState(monday, createdDate = created, today = sunday, completed = false),
+            53,
+            gridColumnCount(createdDate = sunday.minusWeeks(52), today = sunday, columnsToFill = 20),
         )
+    }
+
+    @Test
+    fun `columns to fill round up so no bare card shows at the edge`() {
+        // Two whole 16dp columns is 29dp of tiles; a 30dp card needs a third, part-shown.
+        assertEquals(2, columnsToFill(widthDp = 29f, tileDp = 13f, gapDp = 3f))
+        assertEquals(3, columnsToFill(widthDp = 30f, tileDp = 13f, gapDp = 3f))
+    }
+
+    @Test
+    fun `even a card with no width asks for one column`() {
+        assertEquals(1, columnsToFill(widthDp = 0f, tileDp = 13f, gapDp = 3f))
+    }
+
+    @Test
+    fun `cells before the habit existed are ordinary empty days`() {
+        // The grid is a block of faded tiles from day one and every past day in it can be
+        // filled in — remembering on Wednesday that you also ran on Monday is normal.
         assertEquals(
             TileState.EMPTY,
-            tileState(created, createdDate = created, today = sunday, completed = false),
+            tileState(monday, today = sunday, completed = false),
         )
-    }
-
-    @Test
-    fun `a completed cell before the habit existed is still outside`() {
-        // Defensive: a stray row must not draw a tile where the grid has no business
-        // being tappable.
-        assertEquals(
-            TileState.OUTSIDE,
-            tileState(monday, createdDate = sunday, today = sunday, completed = true),
-        )
-    }
-
-    @Test
-    fun `future cells are outside the grid`() {
-        assertEquals(
-            TileState.OUTSIDE,
-            tileState(sunday.plusDays(1), createdDate = monday, today = sunday, completed = false),
-        )
-    }
-
-    @Test
-    fun `today is inside the grid`() {
         assertEquals(
             TileState.FILLED,
-            tileState(sunday, createdDate = monday, today = sunday, completed = true),
+            tileState(monday, today = sunday, completed = true),
         )
+    }
+
+    @Test
+    fun `future cells are future, completed or not`() {
         assertEquals(
-            TileState.EMPTY,
-            tileState(sunday, createdDate = monday, today = sunday, completed = false),
+            TileState.FUTURE,
+            tileState(sunday.plusDays(1), today = sunday, completed = false),
         )
+        // Defensive: a stray row must not light up a day that has not happened.
+        assertEquals(
+            TileState.FUTURE,
+            tileState(sunday.plusDays(1), today = sunday, completed = true),
+        )
+    }
+
+    @Test
+    fun `today is the last day that counts`() {
+        assertEquals(TileState.FILLED, tileState(sunday, today = sunday, completed = true))
+        assertEquals(TileState.EMPTY, tileState(sunday, today = sunday, completed = false))
     }
 }

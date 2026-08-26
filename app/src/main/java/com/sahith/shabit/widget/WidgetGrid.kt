@@ -9,11 +9,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.createBitmap
 import com.sahith.shabit.ui.EMPTY_TILE_ALPHA
+import com.sahith.shabit.ui.FUTURE_TILE_ALPHA
 import com.sahith.shabit.ui.dashboard.GRID_ROWS
 import com.sahith.shabit.ui.dashboard.TileState
 import com.sahith.shabit.ui.dashboard.cellDate
 import com.sahith.shabit.ui.dashboard.tileState
-import com.sahith.shabit.ui.dashboard.weekColumnCount
 import com.sahith.shabit.ui.dashboard.weekStartAt
 import java.time.LocalDate
 import kotlin.math.floor
@@ -28,8 +28,8 @@ import kotlin.math.min
  * be a nest of workarounds parcelled across a Binder transaction with a hard 1MB ceiling.
  * One `Canvas` per habit is both smaller on the wire and pixel-identical to the dashboard.
  *
- * The layout rules themselves are not reimplemented — [weekColumnCount], [weekStartAt],
- * [cellDate] and [tileState] are the same functions the dashboard grid lays out with.
+ * The layout rules themselves are not reimplemented — [weekStartAt], [cellDate] and
+ * [tileState] are the same functions the dashboard grid lays out with.
  */
 internal object WidgetGrid {
     /**
@@ -74,16 +74,17 @@ internal object WidgetGrid {
     private const val MIN_COLUMNS = 4
 
     /**
-     * How many week columns to actually draw: what fits, what exists, and never more than
-     * [MAX_WEEKS] — or none at all when the placement is too narrow to be worth it.
+     * How many week columns to actually draw: what fits, never more than [MAX_WEEKS], and
+     * none at all when the placement is too narrow to be worth it.
      *
-     * A young habit is not the same as a narrow widget: three weeks old still draws its
-     * three columns, because [MIN_COLUMNS] is a rule about room, not about history.
+     * How old the habit is does not come into it. As on the dashboard, the grid is a full
+     * block of faded tiles from the day the habit is made, so a young habit fills the
+     * widget exactly like an old one — only with fewer of them lit.
      */
-    fun columnCount(widthDp: Float, createdDate: LocalDate, today: LocalDate): Int {
+    fun columnCount(widthDp: Float): Int {
         val fits = columnsThatFit(widthDp)
         if (fits < MIN_COLUMNS) return 0
-        return min(min(fits, weekColumnCount(createdDate, today)), MAX_WEEKS)
+        return min(fits, MAX_WEEKS)
     }
 
     /**
@@ -95,7 +96,6 @@ internal object WidgetGrid {
     fun render(
         density: Float,
         columns: Int,
-        createdDate: LocalDate,
         today: LocalDate,
         completions: Set<LocalDate>,
         color: Color,
@@ -116,6 +116,7 @@ internal object WidgetGrid {
 
         val filled = color.toArgb()
         val empty = color.copy(alpha = EMPTY_TILE_ALPHA).toArgb()
+        val future = color.copy(alpha = FUTURE_TILE_ALPHA).toArgb()
 
         repeat(columns) { index ->
             // Index 0 is the week containing today, and today's column sits at the right
@@ -124,11 +125,12 @@ internal object WidgetGrid {
             val left = width - (index + 1) * step + gap
             repeat(GRID_ROWS) { row ->
                 val date = cellDate(weekStart, row)
-                val state = tileState(date, createdDate, today, completions.contains(date))
-                // OUTSIDE is not a tile: before the habit existed, or after today. Leaving
-                // it unpainted shows the widget's own ground through, as on the card.
-                if (state == TileState.OUTSIDE) return@repeat
-                paint.color = if (state == TileState.FILLED) filled else empty
+                val state = tileState(date, today, completions.contains(date))
+                paint.color = when (state) {
+                    TileState.FILLED -> filled
+                    TileState.EMPTY -> empty
+                    TileState.FUTURE -> future
+                }
                 rect.set(left, row * step, left + tile, row * step + tile)
                 canvas.drawRoundRect(rect, corner, corner, paint)
             }

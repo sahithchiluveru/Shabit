@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.sahith.shabit.R
 import com.sahith.shabit.ui.EMPTY_TILE_ALPHA
+import com.sahith.shabit.ui.FUTURE_TILE_ALPHA
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -36,6 +38,10 @@ fun tileTag(date: LocalDate): String = "tile-$date"
  * A habit's completion grid: one column per week, seven rows of weekdays, today at the
  * right-hand edge.
  *
+ * The grid always fills the width it is given — see [gridColumnCount] — so a habit made
+ * this morning shows the same full block of faded tiles as one a year old, and filling
+ * them in is the whole interaction.
+ *
  * `reverseLayout` is what anchors today rather than a scroll-to-end after measuring, so a
  * three-year history costs nothing on first frame — the LazyRow only ever composes the
  * columns actually on screen.
@@ -49,21 +55,28 @@ fun HabitGrid(
     onToggle: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val columnCount = remember(createdDate, today) { weekColumnCount(createdDate, today) }
-    LazyRow(
-        modifier = modifier,
-        reverseLayout = true,
-        horizontalArrangement = Arrangement.spacedBy(TileGap),
-    ) {
-        items(columnCount) { index ->
-            WeekColumn(
-                weekStart = weekStartAt(index, today),
+    BoxWithConstraints(modifier = modifier) {
+        val width = maxWidth
+        val columnCount = remember(createdDate, today, width) {
+            gridColumnCount(
                 createdDate = createdDate,
                 today = today,
-                completions = completions,
-                color = color,
-                onToggle = onToggle,
+                columnsToFill = columnsToFill(width.value, TileSize.value, TileGap.value),
             )
+        }
+        LazyRow(
+            reverseLayout = true,
+            horizontalArrangement = Arrangement.spacedBy(TileGap),
+        ) {
+            items(columnCount) { index ->
+                WeekColumn(
+                    weekStart = weekStartAt(index, today),
+                    today = today,
+                    completions = completions,
+                    color = color,
+                    onToggle = onToggle,
+                )
+            }
         }
     }
 }
@@ -71,7 +84,6 @@ fun HabitGrid(
 @Composable
 private fun WeekColumn(
     weekStart: LocalDate,
-    createdDate: LocalDate,
     today: LocalDate,
     completions: Set<LocalDate>,
     color: Color,
@@ -82,7 +94,7 @@ private fun WeekColumn(
             val date = cellDate(weekStart, row)
             Tile(
                 date = date,
-                state = tileState(date, createdDate, today, completions.contains(date)),
+                state = tileState(date, today, completions.contains(date)),
                 color = color,
                 onToggle = onToggle,
             )
@@ -102,10 +114,11 @@ private fun Tile(
         .size(TileSize)
         .clip(RoundedCornerShape(TileCorner))
 
-    if (state == TileState.OUTSIDE) {
-        // Bare card background: before the habit existed, or after today. It gets no click
-        // handler at all, so a tap falls through to the row it is scrolling in.
-        Box(modifier = box)
+    if (state == TileState.FUTURE) {
+        // Drawn, so the block has a straight right edge and the current week reads as a
+        // week — but fainter than an empty day, and with no click handler at all, so a
+        // tap falls through to the row it is scrolling in.
+        Box(modifier = box.background(color.copy(alpha = FUTURE_TILE_ALPHA)))
     } else {
         val label = stringResource(
             if (state == TileState.FILLED) R.string.tile_done else R.string.tile_not_done,
