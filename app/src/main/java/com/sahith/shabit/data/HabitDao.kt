@@ -16,9 +16,23 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE archivedAt IS NULL ORDER BY createdDate ASC, id ASC")
     fun activeHabits(): Flow<List<Habit>>
 
-    /** Archived habits, most recently archived first — that is the one you came looking for. */
-    @Query("SELECT * FROM habits WHERE archivedAt IS NOT NULL ORDER BY archivedAt DESC, id ASC")
-    fun archivedHabits(): Flow<List<Habit>>
+    /**
+     * Archived habits, most recently archived first — that is the one you came looking for
+     * — each with the number of tiles its grid is holding.
+     *
+     * A LEFT JOIN so a habit archived before it was ever ticked still appears, with a
+     * count of zero rather than no row at all.
+     */
+    @Query(
+        """
+        SELECT habits.*, COUNT(completions.habitId) AS completionCount
+        FROM habits LEFT JOIN completions ON completions.habitId = habits.id
+        WHERE habits.archivedAt IS NOT NULL
+        GROUP BY habits.id
+        ORDER BY habits.archivedAt DESC, habits.id ASC
+        """,
+    )
+    fun archivedHabits(): Flow<List<ArchivedHabitRow>>
 
     /** A one-shot read for the edit screen, which loads a habit once into a form. */
     @Query("SELECT * FROM habits WHERE id = :habitId")

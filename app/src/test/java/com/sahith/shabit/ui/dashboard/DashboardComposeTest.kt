@@ -2,10 +2,13 @@ package com.sahith.shabit.ui.dashboard
 
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.sahith.shabit.data.Habit
 import com.sahith.shabit.data.HabitRepository
@@ -72,6 +75,7 @@ class DashboardComposeTest {
                     onEditHabit = {},
                     onArchiveHabit = {},
                     onDeleteHabit = {},
+                    onOpenSettings = {},
                 )
             }
         }
@@ -135,5 +139,28 @@ class DashboardComposeTest {
         showDashboard(HabitRepository.MAX_ACTIVE_HABITS)
 
         compose.onNodeWithTag(ADD_HABIT_TAG).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `deleting names the habit and counts the tiles that would go with it`() {
+        showCard(completions = setOf(today, today.minusDays(1), today.minusDays(4)))
+
+        compose.onNodeWithContentDescription("Habit options").performClick()
+        compose.onNodeWithText("Delete").performClick()
+
+        compose.onNodeWithText("Delete Sport?").assertIsDisplayed()
+        compose
+            .onNodeWithText(
+                "This permanently removes 3 completed days. This cannot be undone. " +
+                    "Archive instead if you want to keep the history.",
+            )
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `settings is always reachable, cap or no cap`() {
+        showDashboard(HabitRepository.MAX_ACTIVE_HABITS)
+
+        compose.onNodeWithTag(SETTINGS_TAG).assertIsEnabled()
     }
 }

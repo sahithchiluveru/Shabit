@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -127,9 +128,32 @@ class HabitRepositoryTest {
         assertTrue(repository.activeHabits().first().isEmpty())
         assertEquals(0, repository.activeCount())
         val archived = repository.archivedHabits().first().single()
-        assertEquals("Smoking", archived.name)
-        assertNotNull(archived.archivedAt)
+        assertEquals("Smoking", archived.habit.name)
+        assertNotNull(archived.habit.archivedAt)
         assertEquals(setOf(today), repository.completions(id).first())
+    }
+
+    @Test
+    fun `an archived habit reports the size and span of the grid it is keeping`() = runTest {
+        val created = today.minusWeeks(4)
+        val id = addHabit("Smoking", createdDate = created)
+        repository.toggle(id, today)
+        repository.toggle(id, today.minusDays(1))
+        repository.toggle(id, today.minusDays(2))
+
+        repository.archive(id)
+
+        val archived = repository.archivedHabits().first().single()
+        assertEquals(3, archived.completionCount)
+        assertEquals(created, archived.habit.createdDate)
+        assertEquals(today, archived.archivedDate)
+    }
+
+    @Test
+    fun `an archived habit with no completions still appears, counting zero`() = runTest {
+        repository.archive(addHabit("Smoking"))
+
+        assertEquals(0, repository.archivedHabits().first().single().completionCount)
     }
 
     @Test
@@ -137,11 +161,36 @@ class HabitRepositoryTest {
         val id = addHabit("Smoking")
         repository.archive(id)
 
-        repository.restore(id)
+        assertTrue(repository.restore(id))
 
         assertEquals(1, repository.activeCount())
         assertTrue(repository.archivedHabits().first().isEmpty())
         assertNull(repository.activeHabits().first().single().archivedAt)
+    }
+
+    @Test
+    fun `restoring is refused when all four slots are taken`() = runTest {
+        val id = addHabit("Smoking")
+        repository.archive(id)
+        repeat(HabitRepository.MAX_ACTIVE_HABITS) { addHabit("Habit $it") }
+
+        assertFalse(repository.restore(id))
+
+        assertEquals(HabitRepository.MAX_ACTIVE_HABITS, repository.activeCount())
+        assertEquals("Smoking", repository.archivedHabits().first().single().habit.name)
+    }
+
+    @Test
+    fun `an archive and restore round trip keeps every completion`() = runTest {
+        val id = addHabit("Smoking", createdDate = today.minusWeeks(4))
+        val filled = setOf(today, today.minusDays(3), today.minusDays(11))
+        filled.forEach { repository.toggle(id, it) }
+
+        repository.archive(id)
+        assertTrue(repository.restore(id))
+
+        assertEquals(filled, repository.completions(id).first())
+        assertEquals(today.minusWeeks(4), repository.activeHabits().first().single().createdDate)
     }
 
     @Test

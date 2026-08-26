@@ -27,7 +27,19 @@ class HabitRepository(
 
     fun activeHabits(): Flow<List<Habit>> = habits.activeHabits()
 
-    fun archivedHabits(): Flow<List<Habit>> = habits.archivedHabits()
+    /**
+     * Archived habits for the settings screen, newest first, each with the size and span
+     * of the grid it is keeping.
+     */
+    fun archivedHabits(): Flow<List<ArchivedHabit>> = habits.archivedHabits().map { rows ->
+        rows.map { row ->
+            ArchivedHabit(
+                habit = row.habit,
+                completionCount = row.completionCount,
+                archivedDate = habitDate(checkNotNull(row.habit.archivedAt), clock.zone),
+            )
+        }
+    }
 
     /** The filled tiles for one habit. A date is present iff its tile is filled. */
     fun completions(habitId: Long): Flow<Set<LocalDate>> =
@@ -78,7 +90,19 @@ class HabitRepository(
     /** Frees one of the four active slots. The grid is kept — this is not a soft delete. */
     suspend fun archive(habitId: Long) = habits.setArchivedAt(habitId, Instant.now(clock))
 
-    suspend fun restore(habitId: Long) = habits.setArchivedAt(habitId, null)
+    /**
+     * Return an archived habit to the dashboard, or refuse with false when all four slots
+     * are taken. Same transaction, same reason as [create]: the cap is the invariant, and
+     * a disabled button is only the polite half of enforcing it.
+     */
+    suspend fun restore(habitId: Long): Boolean = database.withTransaction {
+        if (habits.activeCount() >= MAX_ACTIVE_HABITS) {
+            false
+        } else {
+            habits.setArchivedAt(habitId, null)
+            true
+        }
+    }
 
     /** Destroys the habit *and* its history. Confirm with the user before calling this. */
     suspend fun delete(habitId: Long) = habits.delete(habitId)

@@ -1,8 +1,10 @@
 package com.sahith.shabit.data
 
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 /** The hour the habit day rolls over. See [habitToday]. */
 private const val ROLLOVER_HOUR = 4L
@@ -21,3 +23,13 @@ private const val ROLLOVER_HOUR = 4L
  */
 fun habitToday(clock: Clock = Clock.systemDefaultZone()): LocalDate =
     LocalDateTime.now(clock).minusHours(ROLLOVER_HOUR).toLocalDate()
+
+/**
+ * Which habit day an absolute moment fell on, under the same 4am rule as [habitToday].
+ *
+ * Only `Habit.archivedAt` is stored as a moment, so this is only for showing when a habit
+ * was archived. It needs a [zone] because an [Instant] has none of its own — pass the zone
+ * of the clock that produced it.
+ */
+fun habitDate(instant: Instant, zone: ZoneId): LocalDate =
+    LocalDateTime.ofInstant(instant, zone).minusHours(ROLLOVER_HOUR).toLocalDate()

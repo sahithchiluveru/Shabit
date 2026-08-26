@@ -25,9 +25,28 @@
     <string name="tile_not_done">%1$s, not done</string>
 
     <string name="delete_habit_title">Delete %1$s?</string>
-    <string name="delete_habit_message">This also deletes its whole grid. Archive instead if you want to keep the history.</string>
+    <plurals name="delete_habit_message">
+        <item quantity="one">This permanently removes %1$d completed day. This cannot be undone.</item>
+        <item quantity="other">This permanently removes %1$d completed days. This cannot be undone.</item>
+    </plurals>
+    <string name="delete_habit_archive_hint">Archive instead if you want to keep the history.</string>
 
     <string name="empty_title">No habits yet</string>
     <string name="empty_body">Add your first habit and start filling the grid.</string>
     <string name="habit_cap_note">Four habits is the limit. Archive one to free a slot — its grid is kept.</string>
+
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="restore">Restore</string>
+    <string name="archived_habits">Archived habits</string>
+    <string name="archived_empty">Nothing archived yet. Archiving a habit frees one of the four slots and keeps its grid.</string>
+    <string name="archived_span">%1$s – %2$s</string>
+    <plurals name="completed_days">
+        <item quantity="one">%1$d completed day</item>
+        <item quantity="other">%1$d completed days</item>
+    </plurals>
+    <string name="restore_blocked">Four habits are already active. Archive one to make room.</string>
+    <string name="about">About</string>
+    <string name="version">Shabit %1$s</string>
+    <string name="source_code">Source code on GitHub</string>
 </resources>

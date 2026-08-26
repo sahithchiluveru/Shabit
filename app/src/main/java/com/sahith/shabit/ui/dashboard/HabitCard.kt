@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -21,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.sahith.shabit.R
 import com.sahith.shabit.data.Habit
+import com.sahith.shabit.ui.DeleteHabitDialog
 import com.sahith.shabit.ui.HabitIcons
 import com.sahith.shabit.ui.habitColor
 import com.sahith.shabit.ui.theme.ShabitTheme
@@ -102,8 +101,10 @@ fun HabitCard(
     }
 
     if (confirmingDelete) {
-        DeleteConfirmation(
+        DeleteHabitDialog(
             habitName = habit.name,
+            completionCount = completions.size,
+            offerArchive = true,
             onConfirm = {
                 confirmingDelete = false
                 onDelete()
@@ -233,25 +234,6 @@ private fun CheckButton(
             modifier = Modifier.size(24.dp),
         )
     }
-}
-
-@Composable
-private fun DeleteConfirmation(
-    habitName: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete_habit_title, habitName)) },
-        text = { Text(stringResource(R.string.delete_habit_message)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-        },
-    )
 }
 
 @Preview(widthDp = 380, backgroundColor = 0xFF0F172A, showBackground = true)
