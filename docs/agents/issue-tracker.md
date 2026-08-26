@@ -4,16 +4,18 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 
 ## Setup status
 
-The GitHub remote does not exist yet. `git init` has been run, but there is no
-`origin` — so `gh` cannot resolve a repo and every command below will fail until
-someone runs:
+Repo: **https://github.com/sahithchiluveru/Shabit** (public, default branch `main`).
+The `origin` remote is configured, so `gh` resolves this repo automatically and every
+command below works as written.
+
+Remaining: the five triage labels are not created yet. Run once, per
+`triage-labels.md`:
 
 ```
-gh repo create shabit --private --source=. --remote=origin --push
+for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do
+  gh label create "$l"
+done
 ```
-
-Once that remote exists, everything in this file works as written. Also create the
-five triage labels (see `triage-labels.md`) with `gh label create <name>`.
 
 ## Conventions
 
