@@ -60,18 +60,20 @@ class MainActivity : ComponentActivity() {
 private fun ShabitApp() {
     var screen by rememberSaveable { mutableStateOf(Screen.Dashboard) }
     var editorTarget by rememberSaveable { mutableStateOf(NEW_HABIT) }
+    // Which *visit* to the editor this is. See [HabitEditor] for why a target id alone is
+    // not enough to identify one.
+    var editorVisit by rememberSaveable { mutableStateOf(0) }
     val toDashboard = { screen = Screen.Dashboard }
+    val openEditor = { habitId: Long ->
+        editorTarget = habitId
+        editorVisit++
+        screen = Screen.Editor
+    }
 
     when (screen) {
         Screen.Dashboard -> Dashboard(
-            onAddHabit = {
-                editorTarget = NEW_HABIT
-                screen = Screen.Editor
-            },
-            onEditHabit = { habitId ->
-                editorTarget = habitId
-                screen = Screen.Editor
-            },
+            onAddHabit = { openEditor(NEW_HABIT) },
+            onEditHabit = openEditor,
             onOpenSettings = { screen = Screen.Settings },
         )
 
@@ -79,6 +81,7 @@ private fun ShabitApp() {
             BackHandler(onBack = toDashboard)
             HabitEditor(
                 habitId = editorTarget.takeIf { it != NEW_HABIT },
+                visit = editorVisit,
                 onClose = toDashboard,
             )
         }
@@ -117,11 +120,16 @@ private fun Dashboard(
 }
 
 @Composable
-private fun HabitEditor(habitId: Long?, onClose: () -> Unit) {
-    // Keyed by target so that closing one habit's form and opening another's starts from
-    // that habit's row rather than the last one's leftovers.
+private fun HabitEditor(habitId: Long?, visit: Int, onClose: () -> Unit) {
+    // Keyed by target *and* visit. `viewModel()` here resolves against the activity's
+    // store, which outlives this composition, so a key of the target alone hands the
+    // second visit back the first visit's finished form — and `FinishEffect` would close
+    // the screen again the instant it opened, which is what a dead + button looks like.
+    // The visit counter is `rememberSaveable`, so a rotation is still the same visit and
+    // keeps whatever has been typed. The cost is that last visit's view model sits in the
+    // store until the activity goes: four strings and two booleans, once per visit.
     val viewModel: HabitEditorViewModel = viewModel(
-        key = "editor-$habitId",
+        key = "editor-$visit-$habitId",
         factory = HabitEditorViewModel.factory(habitId),
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()

@@ -3,6 +3,7 @@ package com.sahith.shabit.widget
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import com.sahith.shabit.ui.EMPTY_TILE_ALPHA
+import com.sahith.shabit.ui.FUTURE_TILE_ALPHA
 import com.sahith.shabit.ui.dashboard.GRID_ROWS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -48,24 +49,7 @@ class WidgetGridTest {
 
     @Test
     fun `a wide placement is still capped at the fixed window`() {
-        val columns = WidgetGrid.columnCount(
-            widthDp = 2000f,
-            createdDate = today.minusYears(3),
-            today = today,
-        )
-
-        assertEquals(WidgetGrid.MAX_WEEKS, columns)
-    }
-
-    @Test
-    fun `a young habit shows only the weeks it has`() {
-        val columns = WidgetGrid.columnCount(
-            widthDp = 2000f,
-            createdDate = today.minusWeeks(2),
-            today = today,
-        )
-
-        assertEquals(3, columns)
+        assertEquals(WidgetGrid.MAX_WEEKS, WidgetGrid.columnCount(widthDp = 2000f))
     }
 
     @Test
@@ -73,7 +57,7 @@ class WidgetGridTest {
         // 250dp wide, less the label, the check button, the padding and the gaps.
         val gridWidth = 250f - 64f - WidgetCheck.SIZE_DP - 20f - 8f
 
-        val columns = WidgetGrid.columnCount(gridWidth, today.minusYears(1), today)
+        val columns = WidgetGrid.columnCount(gridWidth)
 
         assertTrue("expected 14..16 columns, got $columns", columns in 14..16)
     }
@@ -83,18 +67,7 @@ class WidgetGridTest {
         // The compact size bucket, less everything that is not grid.
         val gridWidth = 150f - 64f - WidgetCheck.SIZE_DP - 20f - 8f
 
-        assertEquals(0, WidgetGrid.columnCount(gridWidth, today.minusYears(1), today))
-    }
-
-    @Test
-    fun `a brand new habit is not mistaken for a narrow widget`() {
-        val columns = WidgetGrid.columnCount(
-            widthDp = 2000f,
-            createdDate = today,
-            today = today,
-        )
-
-        assertEquals(1, columns)
+        assertEquals(0, WidgetGrid.columnCount(gridWidth))
     }
 
     @Test
@@ -132,29 +105,30 @@ class WidgetGridTest {
     }
 
     @Test
-    fun `days after today are left unpainted`() {
+    fun `days after today are painted fainter still, not left out`() {
         val bitmap = checkNotNull(render(columns = 1))
 
         // Today is a Wednesday, row 2. Thursday onwards has not happened.
-        assertEquals(0, centreOf(bitmap, row = 3))
-        assertEquals(0, centreOf(bitmap, row = 6))
+        val future = (FUTURE_TILE_ALPHA * 255).roundToInt().toFloat()
+        assertEquals(future, AndroidColor.alpha(centreOf(bitmap, row = 3)).toFloat(), 2f)
+        assertEquals(future, AndroidColor.alpha(centreOf(bitmap, row = 6)).toFloat(), 2f)
     }
 
     @Test
-    fun `days before the habit existed are left unpainted`() {
-        // Created on the Wednesday: Monday and Tuesday of that week are outside the grid.
-        val bitmap = checkNotNull(render(columns = 1, createdDate = today))
+    fun `the grid is drawn in full however young the habit is`() {
+        // Every column is a full seven tiles: the widget is the same block of faded
+        // colour as the card, whatever day the habit was made.
+        val bitmap = checkNotNull(render(columns = 1))
 
-        assertEquals(0, centreOf(bitmap, row = 0))
-        assertEquals(0, centreOf(bitmap, row = 1))
-        assertTrue(AndroidColor.alpha(centreOf(bitmap, row = 2)) > 0)
+        val empty = (EMPTY_TILE_ALPHA * 255).roundToInt().toFloat()
+        assertEquals(empty, AndroidColor.alpha(centreOf(bitmap, row = 0)).toFloat(), 2f)
+        assertEquals(empty, AndroidColor.alpha(centreOf(bitmap, row = 1)).toFloat(), 2f)
     }
 
     private fun render(
         columns: Int,
-        createdDate: LocalDate = today.minusYears(1),
         completions: Set<LocalDate> = emptySet(),
-    ) = WidgetGrid.render(density, columns, createdDate, today, completions, color)
+    ) = WidgetGrid.render(density, columns, today, completions, color)
 
     /** The centre pixel of the tile at [row] in the right-hand column. */
     private fun centreOf(bitmap: Bitmap, row: Int): Int {

@@ -8,6 +8,15 @@ import com.sahith.shabit.ui.theme.ShabitAccent
 const val EMPTY_TILE_ALPHA = 0.15f
 
 /**
+ * A day that has not arrived yet, fainter than an incomplete one.
+ *
+ * Present rather than absent so a card is one solid block from the day the habit is made,
+ * but low enough that the eye still lands on the boundary between "not done" and "not
+ * yet" without a second colour.
+ */
+const val FUTURE_TILE_ALPHA = 0.06f
+
+/**
  * The 21 swatches a habit's colour may be, in the order the picker lays them out: three
  * rows of seven, warm → cool → pinks and neutrals, as in `design/`.
  *

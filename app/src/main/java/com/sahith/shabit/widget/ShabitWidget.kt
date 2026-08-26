@@ -171,9 +171,9 @@ private fun HabitRow(entry: WidgetHabit, today: LocalDate, modifier: GlanceModif
 
     val gridWidthDp = LocalSize.current.width.value -
         LABEL_WIDTH_DP - WidgetCheck.SIZE_DP - 2 * WIDGET_PADDING_DP - ROW_GAPS_DP
-    val columns = WidgetGrid.columnCount(gridWidthDp, habit.createdDate, today)
+    val columns = WidgetGrid.columnCount(gridWidthDp)
     val grid = remember(habit.id, habit.colorHex, columns, today, entry.completions) {
-        WidgetGrid.render(density, columns, habit.createdDate, today, entry.completions, color)
+        WidgetGrid.render(density, columns, today, entry.completions, color)
     }
     val check = remember(habit.colorHex, done, density) {
         WidgetCheck.render(context, density, done, color)
