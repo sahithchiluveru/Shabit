@@ -8,6 +8,16 @@
     <string name="archive">Archive</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+
+    <string name="new_habit_title">New Habit</string>
+    <string name="edit_habit_title">Edit Habit</string>
+    <string name="field_name">Name</string>
+    <string name="field_name_hint">Reading</string>
+    <string name="field_description">Description</string>
+    <string name="field_description_hint">Read for at least 15 minutes</string>
+    <string name="field_icon">Icon</string>
+    <string name="field_color">Color</string>
 
     <string name="check_today">Mark today complete</string>
     <string name="uncheck_today">Mark today incomplete</string>

@@ -143,8 +143,8 @@ class DashboardViewModelTest {
     private fun TestScope.collectUiState() =
         viewModel.uiState.also { state -> backgroundScope.launch { state.collect {} } }
 
-    private suspend fun addHabit(name: String): Long {
-        repository.upsert(
+    private suspend fun addHabit(name: String): Long = checkNotNull(
+        repository.create(
             Habit(
                 name = name,
                 description = "",
@@ -152,7 +152,6 @@ class DashboardViewModelTest {
                 colorHex = "#FBBF24",
                 createdDate = today.minusWeeks(4),
             ),
-        )
-        return repository.activeHabits().first().first { it.name == name }.id
-    }
+        ),
+    )
 }

@@ -155,29 +155,64 @@ class HabitRepositoryTest {
     }
 
     @Test
-    fun `upsert on an existing id edits in place`() = runTest {
+    fun `creating is refused once four habits are active`() = runTest {
+        repeat(HabitRepository.MAX_ACTIVE_HABITS) { addHabit("Habit $it") }
+
+        assertNull(repository.create(newHabit("One too many")))
+        assertEquals(HabitRepository.MAX_ACTIVE_HABITS, repository.activeCount())
+    }
+
+    @Test
+    fun `archiving frees a slot for a new habit`() = runTest {
+        repeat(HabitRepository.MAX_ACTIVE_HABITS) { addHabit("Habit $it") }
+        repository.archive(repository.activeHabits().first().first().id)
+
+        assertNotNull(repository.create(newHabit("Replacement")))
+    }
+
+    @Test
+    fun `updating details edits in place`() = runTest {
         val id = addHabit("Gym")
 
-        repository.upsert(
-            repository.activeHabits().first().single().copy(name = "Gym & swim"),
-        )
+        repository.updateDetails(id, "Gym & swim", "Twice a week", "ic_bike", "#22D3EE")
 
-        val habits = repository.activeHabits().first()
-        assertEquals(1, habits.size)
-        assertEquals("Gym & swim", habits.single().name)
-        assertEquals(id, habits.single().id)
+        val habit = repository.activeHabits().first().single()
+        assertEquals(id, habit.id)
+        assertEquals("Gym & swim", habit.name)
+        assertEquals("Twice a week", habit.description)
+        assertEquals("ic_bike", habit.iconKey)
+        assertEquals("#22D3EE", habit.colorHex)
     }
 
-    private suspend fun addHabit(name: String, createdDate: LocalDate = today): Long {
-        repository.upsert(
-            Habit(
-                name = name,
-                description = "",
-                iconKey = "ic_dumbbell",
-                colorHex = "#FBBF24",
-                createdDate = createdDate,
-            ),
-        )
-        return repository.activeHabits().first().first { it.name == name }.id
+    @Test
+    fun `updating details keeps the created date and the completions`() = runTest {
+        val created = today.minusWeeks(6)
+        val id = addHabit("Gym", createdDate = created)
+        repository.toggle(id, today)
+        repository.toggle(id, today.minusDays(3))
+
+        repository.updateDetails(id, "Gym", "", "ic_bike", "#22D3EE")
+
+        assertEquals(created, repository.activeHabits().first().single().createdDate)
+        assertEquals(setOf(today, today.minusDays(3)), repository.completions(id).first())
     }
+
+    @Test
+    fun `habit reads one row back by id`() = runTest {
+        val id = addHabit("Gym")
+
+        assertEquals("Gym", repository.habit(id)?.name)
+        assertNull(repository.habit(id + 1))
+    }
+
+    private fun newHabit(name: String, createdDate: LocalDate = today) = Habit(
+        name = name,
+        description = "",
+        iconKey = "ic_dumbbell",
+        colorHex = "#FBBF24",
+        createdDate = createdDate,
+    )
+
+    private suspend fun addHabit(name: String, createdDate: LocalDate = today): Long =
+        checkNotNull(repository.create(newHabit(name, createdDate)))
 }

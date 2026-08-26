@@ -1,8 +1,8 @@
 package com.sahith.shabit.data
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -20,8 +20,34 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE archivedAt IS NOT NULL ORDER BY archivedAt DESC, id ASC")
     fun archivedHabits(): Flow<List<Habit>>
 
-    @Upsert
-    suspend fun upsert(habit: Habit)
+    /** A one-shot read for the edit screen, which loads a habit once into a form. */
+    @Query("SELECT * FROM habits WHERE id = :habitId")
+    suspend fun habit(habitId: Long): Habit?
+
+    @Insert
+    suspend fun insert(habit: Habit): Long
+
+    /**
+     * The four user-editable fields, and deliberately only those.
+     *
+     * Editing must not disturb `createdDate` (the left edge of the grid) or `archivedAt`,
+     * so rather than trust callers to copy a row faithfully, the statement itself has no
+     * way to reach them.
+     */
+    @Query(
+        """
+        UPDATE habits
+        SET name = :name, description = :description, iconKey = :iconKey, colorHex = :colorHex
+        WHERE id = :habitId
+        """,
+    )
+    suspend fun updateDetails(
+        habitId: Long,
+        name: String,
+        description: String,
+        iconKey: String,
+        colorHex: String,
+    )
 
     /** Archive with a non-null moment, restore with null. */
     @Query("UPDATE habits SET archivedAt = :archivedAt WHERE id = :habitId")
