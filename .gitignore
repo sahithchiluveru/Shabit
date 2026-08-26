@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+release/
+
+# Signing — never commit these (see #8)
+*.jks
+*.keystore
+keystore.properties
+keystore.b64
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/

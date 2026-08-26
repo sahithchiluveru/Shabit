@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Framework Material dark, so we don't pull in the Material Components
+         library just for an XML theme a Compose-only app barely uses. -->
+    <style name="Theme.Shabit" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/shabit_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

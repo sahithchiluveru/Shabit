@@ -1,0 +1,69 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    namespace = "com.sahith.shabit"
+
+    // AGP 9 takes SDK levels as blocks rather than scalars.
+    //
+    // compileSdk is 37 rather than the 36 named in #2: Compose 1.12 (from the
+    // BOM below) refuses to be consumed by anything compiling against 36.
+    // compileSdk only decides which APIs are visible at compile time —
+    // targetSdk, which opts into new runtime behaviour, stays at 36.
+    compileSdk {
+        version = release(37)
+    }
+
+    defaultConfig {
+        applicationId = "com.sahith.shabit"
+        minSdk {
+            version = release(26)
+        }
+        targetSdk {
+            version = release(36)
+        }
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+
+    buildTypes {
+        release {
+            // Minification stays off until #8, which owns release signing and
+            // is responsible for verifying Room and Glance keep rules. Enabling
+            // R8 here would ship config that no CI job actually exercises.
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    // Java/Kotlin target levels are deliberately left at AGP's defaults. With
+    // built-in Kotlin, AGP keeps the Java and Kotlin targets in step; setting
+    // only one of them is how you get "Inconsistent JVM-target compatibility".
+    // minSdk 26 means java.time is available natively, so no desugaring.
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.activity.compose)
+
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+}
