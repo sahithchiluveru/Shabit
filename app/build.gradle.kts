@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -45,10 +46,26 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric reads the merged manifest and resources through the config
+            // file AGP only writes when this is on. Without it the data-layer tests
+            // cannot open a Room database at all.
+            isIncludeAndroidResources = true
+        }
+    }
+
     // Java/Kotlin target levels are deliberately left at AGP's defaults. With
     // built-in Kotlin, AGP keeps the Java and Kotlin targets in step; setting
     // only one of them is how you get "Inconsistent JVM-target compatibility".
     // minSdk 26 means java.time is available natively, so no desugaring.
+}
+
+// Room's schema JSON is the only record of what version 1 looked like, and the first
+// migration test will need it. Exporting it into a tracked directory keeps that record
+// under review rather than inside build/.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -65,5 +82,14 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    // The data layer is tested against a real in-memory SQLite database, which needs a
+    // Context. Robolectric supplies one on the JVM so `testDebugUnitTest` — and therefore
+    // CI — covers the toggle transaction and the delete cascade without an emulator.
+    testImplementation(libs.robolectric)
 }
