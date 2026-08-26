@@ -1,5 +1,9 @@
 package com.sahith.shabit
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -8,8 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,14 +24,25 @@ import com.sahith.shabit.ui.dashboard.DashboardViewModel
 import com.sahith.shabit.ui.editor.FinishEffect
 import com.sahith.shabit.ui.editor.HabitEditorScreen
 import com.sahith.shabit.ui.editor.HabitEditorViewModel
+import com.sahith.shabit.ui.settings.SettingsScreen
+import com.sahith.shabit.ui.settings.SettingsViewModel
 import com.sahith.shabit.ui.theme.ShabitTheme
 
 /**
  * Stands in for "create a new habit" in [ShabitApp]'s editor target. Room ids autogenerate
- * from 1, so 0 can never collide with a real habit — which is what lets the whole
- * navigation state be one nullable Long that `rememberSaveable` can put in a Bundle.
+ * from 1, so 0 can never collide with a real habit.
  */
 private const val NEW_HABIT = 0L
+
+/** Where the About section's link goes. */
+private const val REPO_URL = "https://github.com/sahithchiluveru/Shabit"
+
+/**
+ * Shabit's three screens. An enum is `Serializable`, which is all `rememberSaveable` needs
+ * to put it in a Bundle — no custom Saver, and no navigation library for what is still a
+ * dashboard with two things hanging off it.
+ */
+private enum class Screen { Dashboard, Editor, Settings }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,27 +56,37 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Two screens and one way between them, so this is the whole of Shabit's navigation:
- * null shows the dashboard, anything else shows the editor. A navigation library would be
- * a dependency and a graph for a single edge.
- */
 @Composable
 private fun ShabitApp() {
-    var editorTarget by rememberSaveable { mutableStateOf<Long?>(null) }
-    val target = editorTarget
+    var screen by rememberSaveable { mutableStateOf(Screen.Dashboard) }
+    var editorTarget by rememberSaveable { mutableStateOf(NEW_HABIT) }
+    val toDashboard = { screen = Screen.Dashboard }
 
-    if (target == null) {
-        Dashboard(
-            onAddHabit = { editorTarget = NEW_HABIT },
-            onEditHabit = { habitId -> editorTarget = habitId },
+    when (screen) {
+        Screen.Dashboard -> Dashboard(
+            onAddHabit = {
+                editorTarget = NEW_HABIT
+                screen = Screen.Editor
+            },
+            onEditHabit = { habitId ->
+                editorTarget = habitId
+                screen = Screen.Editor
+            },
+            onOpenSettings = { screen = Screen.Settings },
         )
-    } else {
-        BackHandler { editorTarget = null }
-        HabitEditor(
-            habitId = target.takeIf { it != NEW_HABIT },
-            onClose = { editorTarget = null },
-        )
+
+        Screen.Editor -> {
+            BackHandler(onBack = toDashboard)
+            HabitEditor(
+                habitId = editorTarget.takeIf { it != NEW_HABIT },
+                onClose = toDashboard,
+            )
+        }
+
+        Screen.Settings -> {
+            BackHandler(onBack = toDashboard)
+            Settings(onBack = toDashboard)
+        }
     }
 }
 
@@ -67,6 +94,7 @@ private fun ShabitApp() {
 private fun Dashboard(
     onAddHabit: () -> Unit,
     onEditHabit: (habitId: Long) -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,6 +112,7 @@ private fun Dashboard(
         onEditHabit = onEditHabit,
         onArchiveHabit = viewModel::archive,
         onDeleteHabit = viewModel::delete,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -107,5 +136,39 @@ private fun HabitEditor(habitId: Long?, onClose: () -> Unit) {
         onColorChange = viewModel::setColorHex,
         onSave = viewModel::save,
         onClose = onClose,
+    )
+}
+
+@Composable
+private fun Settings(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val versionName = remember(context) {
+        // From the installed package rather than BuildConfig: generating BuildConfig means
+        // a Java source set, and the whole app is otherwise Kotlin. This is the same
+        // string, read from the APK that is actually running.
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty()
+    }
+
+    SettingsScreen(
+        state = state,
+        versionName = versionName,
+        onRestore = viewModel::restore,
+        onDelete = viewModel::delete,
+        onOpenRepo = {
+            // Shabit holds no INTERNET permission and wants none — handing the URL to
+            // whatever browser is installed is the whole of its networking.
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(REPO_URL)))
+            } catch (_: ActivityNotFoundException) {
+                // A device with no browser at all. Nothing to do here but not crash.
+            }
+        },
+        onBack = onBack,
     )
 }

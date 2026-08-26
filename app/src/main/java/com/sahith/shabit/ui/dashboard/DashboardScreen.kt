@@ -33,6 +33,9 @@ import java.time.LocalDate
 /** Test handle for the top-bar add button. */
 const val ADD_HABIT_TAG = "add-habit"
 
+/** Test handle for the top-bar settings button. */
+const val SETTINGS_TAG = "settings"
+
 /**
  * The main screen: every active habit as a card, newest week on the right.
  *
@@ -48,6 +51,7 @@ fun DashboardScreen(
     onEditHabit: (habitId: Long) -> Unit,
     onArchiveHabit: (habitId: Long) -> Unit,
     onDeleteHabit: (habitId: Long) -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -67,6 +71,15 @@ fun DashboardScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_plus),
                             contentDescription = stringResource(R.string.add_habit),
+                        )
+                    }
+                    IconButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.testTag(SETTINGS_TAG),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings),
+                            contentDescription = stringResource(R.string.settings),
                         )
                     }
                 },
@@ -99,7 +112,8 @@ fun DashboardScreen(
                 if (state.atCap) {
                     // The disabled + button says "no" without saying why. The cap is a
                     // deliberate design choice, so explain the way out of it rather than
-                    // leaving a dead control on screen.
+                    // leaving a dead control on screen — and archiving is now a real way
+                    // out, with the grid waiting in settings.
                     item {
                         Text(
                             text = stringResource(R.string.habit_cap_note),
@@ -181,6 +195,7 @@ private fun DashboardPreview() {
             onEditHabit = {},
             onArchiveHabit = {},
             onDeleteHabit = {},
+            onOpenSettings = {},
         )
     }
 }
@@ -196,6 +211,7 @@ private fun EmptyDashboardPreview() {
             onEditHabit = {},
             onArchiveHabit = {},
             onDeleteHabit = {},
+            onOpenSettings = {},
         )
     }
 }
