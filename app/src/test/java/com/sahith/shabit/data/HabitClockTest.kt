@@ -48,4 +48,38 @@ class HabitClockTest {
             habitToday(clockAt("2026-03-15T04:00:00")),
         )
     }
+
+    @Test
+    fun `an archived moment lands on the habit day it happened in`() {
+        val zoned = clockAt("2026-03-15T00:15:00")
+
+        assertEquals(
+            LocalDate.of(2026, 3, 14),
+            habitDate(zoned.instant(), zone),
+        )
+    }
+
+    @Test
+    fun `the next rollover from the small hours is this morning's 4am`() {
+        assertEquals(
+            LocalDateTime.parse("2026-03-15T04:00:00").atZone(zone).toInstant(),
+            nextRollover(clockAt("2026-03-15T00:15:00")),
+        )
+    }
+
+    @Test
+    fun `the next rollover from the middle of the day is tomorrow's 4am`() {
+        assertEquals(
+            LocalDateTime.parse("2026-03-16T04:00:00").atZone(zone).toInstant(),
+            nextRollover(clockAt("2026-03-15T14:30:00")),
+        )
+    }
+
+    @Test
+    fun `4am exactly books the next one rather than firing again immediately`() {
+        assertEquals(
+            LocalDateTime.parse("2026-03-16T04:00:00").atZone(zone).toInstant(),
+            nextRollover(clockAt("2026-03-15T04:00:00")),
+        )
+    }
 }

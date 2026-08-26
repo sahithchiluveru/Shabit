@@ -33,3 +33,18 @@ fun habitToday(clock: Clock = Clock.systemDefaultZone()): LocalDate =
  */
 fun habitDate(instant: Instant, zone: ZoneId): LocalDate =
     LocalDateTime.ofInstant(instant, zone).minusHours(ROLLOVER_HOUR).toLocalDate()
+
+/**
+ * The next moment the habit day rolls over, strictly after now.
+ *
+ * The widget has to redraw at 4am whether or not anyone opens anything: a tile that was
+ * "today" stops being today, and every grid's anchor column moves one along. This is the
+ * arithmetic behind that alarm, kept here with the rest of the rollover rule and away from
+ * `AlarmManager` so it can be tested.
+ */
+fun nextRollover(clock: Clock = Clock.systemDefaultZone()): Instant {
+    val now = LocalDateTime.now(clock)
+    val todayRollover = now.toLocalDate().atTime(ROLLOVER_HOUR.toInt(), 0)
+    val next = if (now.isBefore(todayRollover)) todayRollover else todayRollover.plusDays(1)
+    return next.atZone(clock.zone).toInstant()
+}

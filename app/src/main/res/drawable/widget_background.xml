@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget carries its own ground. Home screens sit on arbitrary wallpaper, and the
+  faded-tile look only reads on something near-black, so this is opaque rather than
+  translucent — see the dark-only note on ShabitTheme.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/shabit_background" />
+    <corners android:radius="16dp" />
+</shape>

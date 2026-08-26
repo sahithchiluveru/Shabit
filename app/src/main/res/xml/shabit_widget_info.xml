@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One widget instance, no configuration Activity: it shows whatever is active, so there is
+  no per-instance state to hold and no dangling habit reference to clean up (decision 4).
+
+  There is no previewLayout: Glance's loading layout is blank by design, and a blank box
+  in the widget picker says less about Shabit than the app icon and the description do.
+
+  updatePeriodMillis is 0 on purpose. The system's own period is capped at 30 minutes and
+  wakes the device to use it; Shabit instead redraws when data changes and once at the 4am
+  rollover, which is every moment the content can actually differ.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minHeight="110dp"
+    android:minResizeHeight="60dp"
+    android:minResizeWidth="140dp"
+    android:minWidth="180dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="4"
+    android:targetCellWidth="4"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

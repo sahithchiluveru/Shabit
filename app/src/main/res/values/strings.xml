@@ -49,4 +49,7 @@
     <string name="about">About</string>
     <string name="version">Shabit %1$s</string>
     <string name="source_code">Source code on GitHub</string>
+
+    <string name="widget_description">Your habits, one tap from the home screen.</string>
+    <string name="widget_empty">Open Shabit to add your first habit.</string>
 </resources>
