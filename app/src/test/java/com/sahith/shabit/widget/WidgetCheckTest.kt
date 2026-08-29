@@ -42,6 +42,19 @@ class WidgetCheckTest {
     }
 
     @Test
+    fun `the button grows with the row it sits in`() {
+        val doubled = WidgetCheck.render(
+            context = RuntimeEnvironment.getApplication(),
+            density = 1f,
+            done = true,
+            color = color,
+            uiScale = 2f,
+        )
+
+        assertEquals((WidgetCheck.SIZE_DP * 2).toInt(), doubled.width)
+    }
+
+    @Test
     fun `done fills the button with the habit's colour`() {
         val bitmap = render(done = true)
 

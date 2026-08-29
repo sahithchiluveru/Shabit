@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.util.DisplayMetrics
 import androidx.annotation.VisibleForTesting
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -18,6 +19,7 @@ import com.sahith.shabit.ui.dashboard.weekStartAt
 import java.time.LocalDate
 import kotlin.math.floor
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * The habit grid, drawn to a bitmap for the widget.
@@ -55,6 +57,12 @@ internal object WidgetGrid {
      * The whole `RemoteViews` tree has to fit in a 1MB Binder transaction, and four grids
      * at 3x would spend most of it on pixels. At 2x a tile is a 14px square, which is as
      * much resolution as a flat rounded square can use.
+     *
+     * The cap is a *resolution* decision and must not become a size one: a bitmap carries
+     * its own density, and Android rescales it by target/bitmap density on the way to the
+     * screen. Left at the default the bitmap would claim to be the device's density, so
+     * capping 2.625 to 2 would silently shrink the drawn grid to 76% of the dp size asked
+     * for. [render] tags every bitmap with the density it actually drew at instead.
      */
     private const val MAX_SCALE = 2f
 
@@ -90,6 +98,12 @@ internal object WidgetGrid {
     /**
      * Draw [columns] weeks of grid, today's week at the right-hand edge.
      *
+     * [uiScale] stretches the tiles themselves so the grid can fill the space a placement
+     * actually gives it — a 4x2 widget is twice the width the shape in #7 was drawn for,
+     * and 8dp tiles marooned in the middle of it read as a mistake. It is a layout choice
+     * and is kept separate from [density], which only decides how many pixels each of
+     * those dp end up being.
+     *
      * Returns null when there is no room for even one column — the caller drops the grid
      * rather than drawing a sliver of one.
      */
@@ -99,9 +113,11 @@ internal object WidgetGrid {
         today: LocalDate,
         completions: Set<LocalDate>,
         color: Color,
+        uiScale: Float = 1f,
     ): Bitmap? {
         if (columns <= 0) return null
-        val scale = min(density, MAX_SCALE)
+        val pixels = min(density, MAX_SCALE)
+        val scale = uiScale * pixels
         val tile = TILE_DP * scale
         val gap = GAP_DP * scale
         val step = tile + gap
@@ -109,6 +125,9 @@ internal object WidgetGrid {
         val width = (columns * step - gap).toInt().coerceAtLeast(1)
         val height = (GRID_ROWS * step - gap).toInt().coerceAtLeast(1)
         val bitmap = createBitmap(width, height)
+        // Without this the bitmap claims the device's density and Android rescales it —
+        // see the note on MAX_SCALE.
+        bitmap.density = (pixels * DisplayMetrics.DENSITY_DEFAULT).roundToInt()
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val corner = CORNER_DP * scale

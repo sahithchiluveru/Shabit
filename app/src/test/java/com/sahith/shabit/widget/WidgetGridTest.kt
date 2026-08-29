@@ -1,6 +1,7 @@
 package com.sahith.shabit.widget
 
 import android.graphics.Bitmap
+import android.util.DisplayMetrics
 import androidx.compose.ui.graphics.Color
 import com.sahith.shabit.ui.EMPTY_TILE_ALPHA
 import com.sahith.shabit.ui.FUTURE_TILE_ALPHA
@@ -125,10 +126,36 @@ class WidgetGridTest {
         assertEquals(empty, AndroidColor.alpha(centreOf(bitmap, row = 1)).toFloat(), 2f)
     }
 
+    @Test
+    fun `a bitmap drawn under the resolution cap still measures its full size`() {
+        // 3x is over MAX_SCALE, so the grid is drawn at 2x. Left tagged with the device's
+        // density the bitmap would be rescaled to 2/3 of the dp size asked for; carrying
+        // the density it was drawn at is what keeps it honest.
+        val bitmap = checkNotNull(
+            WidgetGrid.render(density = 3f, columns = 4, today = today, completions = emptySet(), color = color),
+        )
+
+        val step = WidgetGrid.TILE_DP + WidgetGrid.GAP_DP
+        val expectedDp = 4 * step - WidgetGrid.GAP_DP
+        val drawnDp = bitmap.width * DisplayMetrics.DENSITY_DEFAULT.toFloat() / bitmap.density
+
+        assertEquals(expectedDp, drawnDp, 1f)
+    }
+
+    @Test
+    fun `uiScale stretches the tiles so a big placement is filled, not padded`() {
+        val base = checkNotNull(render(columns = 4))
+        val doubled = checkNotNull(render(columns = 4, uiScale = 2f))
+
+        assertEquals(base.width * 2, doubled.width)
+        assertEquals(base.height * 2, doubled.height)
+    }
+
     private fun render(
         columns: Int,
         completions: Set<LocalDate> = emptySet(),
-    ) = WidgetGrid.render(density, columns, today, completions, color)
+        uiScale: Float = 1f,
+    ) = WidgetGrid.render(density, columns, today, completions, color, uiScale)
 
     /** The centre pixel of the tile at [row] in the right-hand column. */
     private fun centreOf(bitmap: Bitmap, row: Int): Int {
