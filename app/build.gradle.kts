@@ -43,8 +43,8 @@ android {
         // Bumped by hand, in a commit, before the tag that ships it: `release.yml`
         // refuses to build a tag whose name does not match versionName. Two releases
         // must never share a versionCode — Android takes it as the same build.
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     signingConfigs {

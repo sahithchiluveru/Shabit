@@ -22,3 +22,15 @@
 # turns into keep rules, and ShabitWidget/RolloverAlarm are ordinary references from
 # there. Nothing else in the app is resolved by name: HabitIcons is a table of R
 # fields rather than Resources.getIdentifier, precisely so shrinking is safe.
+
+# Glance runs every widget composition inside a WorkManager job (SessionWorker), and
+# WorkManager builds that job's InputMerger by *name*: InputMerger.fromClassName does
+# Class.forName(...).newInstance(). Nothing calls that constructor directly, so R8 strips
+# it — work-runtime's own rule is `-keep class * extends androidx.work.InputMerger`, which
+# keeps the class but, in R8's full mode, none of its members.
+#
+# The failure is silent and total: WorkManager logs the InstantiationException instead of
+# throwing it, fails the job before doWork runs, and the widget sits on its loading
+# spinner forever with no crash and no RemoteViews ever reaching the launcher. Verified in
+# usage.txt, where OverwritingInputMerger came through with its no-arg constructor removed.
+-keep class * extends androidx.work.InputMerger { <init>(); }
