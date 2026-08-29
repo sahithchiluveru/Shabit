@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -56,15 +55,6 @@ import java.time.LocalDate
 /** One habit as the widget draws it. */
 private data class WidgetHabit(val habit: Habit, val completions: Set<LocalDate>)
 
-/** Width reserved for a habit's icon and name. */
-private const val LABEL_WIDTH_DP = 64f
-
-/** Padding inside the widget's own card, on every edge. */
-private const val WIDGET_PADDING_DP = 10f
-
-/** The gaps between label, grid and check button in one row. */
-private const val ROW_GAPS_DP = 8f
-
 /**
  * The headline feature: on a normal day this is the only part of Shabit anyone touches.
  *
@@ -78,16 +68,18 @@ private const val ROW_GAPS_DP = 8f
  */
 object ShabitWidget : GlanceAppWidget() {
     /**
-     * Too narrow for a grid. Everything still works — the name and the check button are
-     * the parts that matter — the history just isn't drawn, rather than being squashed
-     * into two illegible columns.
+     * Exact rather than Responsive, because Responsive reports the bucket, not the widget.
+     *
+     * A placement larger than the largest declared bucket still composes against that
+     * bucket: `LocalSize` said 250dp inside a 341dp widget, so the row was laid out for
+     * 250 and the 91dp left over pooled in the weighted box as a void between a habit's
+     * name and its history. The row now scales to the space it is given, which only works
+     * if it is told the truth about that space.
+     *
+     * A placement too narrow for a real grid still loses it rather than squashing it —
+     * that is [WidgetGrid.columnCount]'s job, and it never depended on the buckets.
      */
-    private val Compact = DpSize(150.dp, 110.dp)
-
-    /** The target placement from #7: 4x4, about 250x230dp. */
-    private val Full = DpSize(250.dp, 180.dp)
-
-    override val sizeMode: SizeMode = SizeMode.Responsive(setOf(Compact, Full))
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = HabitRepository.getInstance(context)
@@ -121,7 +113,7 @@ private fun WidgetContent(habits: List<WidgetHabit>?, today: LocalDate) {
             // A drawable rather than a colour so the corners round on every supported
             // release, and so the widget carries its own ground over any wallpaper.
             .background(ImageProvider(R.drawable.widget_background))
-            .padding(WIDGET_PADDING_DP.dp)
+            .padding(WidgetRow.PADDING_DP.dp)
             .clickable(actionStartActivity<MainActivity>()),
         verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
@@ -130,15 +122,27 @@ private fun WidgetContent(habits: List<WidgetHabit>?, today: LocalDate) {
             // flashing "no habits yet" over four that exist.
             habits == null -> Unit
             habits.isEmpty() -> EmptyState()
-            else -> habits.forEach { entry ->
-                // defaultWeight lives in ColumnScope, so the row's share of the height is
-                // decided here rather than inside HabitRow: four habits split it evenly,
-                // and a short placement shrinks them all instead of clipping the last.
-                HabitRow(
-                    entry = entry,
-                    today = today,
-                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+            else -> {
+                // One scale for every row, so four habits stay a grid rather than four
+                // independently sized ones.
+                val size = LocalSize.current
+                val fit = WidgetRow.scale(
+                    widthDp = size.width.value,
+                    heightDp = size.height.value,
+                    habits = habits.size,
                 )
+                habits.forEach { entry ->
+                    // defaultWeight lives in ColumnScope, so the row's share of the height
+                    // is decided here rather than inside HabitRow: four habits split it
+                    // evenly, and a short placement shrinks them all instead of clipping
+                    // the last.
+                    HabitRow(
+                        entry = entry,
+                        today = today,
+                        fit = fit,
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                    )
+                }
             }
         }
     }
@@ -162,21 +166,33 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun HabitRow(entry: WidgetHabit, today: LocalDate, modifier: GlanceModifier) {
+private fun HabitRow(
+    entry: WidgetHabit,
+    today: LocalDate,
+    fit: Float,
+    modifier: GlanceModifier,
+) {
     val context = LocalContext.current
     val habit = entry.habit
     val color = habitColor(habit.colorHex)
     val density = context.resources.displayMetrics.density
     val done = entry.completions.contains(today)
 
-    val gridWidthDp = LocalSize.current.width.value -
-        LABEL_WIDTH_DP - WidgetCheck.SIZE_DP - 2 * WIDGET_PADDING_DP - ROW_GAPS_DP
-    val columns = WidgetGrid.columnCount(gridWidthDp)
-    val grid = remember(habit.id, habit.colorHex, columns, today, entry.completions) {
-        WidgetGrid.render(density, columns, today, entry.completions, color)
+    val scale = fit.coerceAtLeast(WidgetRow.MIN_SCALE)
+    val labelWidth = WidgetRow.LABEL_WIDTH_DP * scale
+    val checkSize = WidgetCheck.SIZE_DP * scale
+    val gaps = WidgetRow.GAPS_DP * scale
+
+    // columnCount counts unscaled tiles, so the width it is handed has to come back out
+    // of the scale first — and then the drawing puts it back in.
+    val gridWidthDp = WidgetRow.gridWidthDp(LocalSize.current.width.value, scale)
+    val columns =
+        if (fit < WidgetRow.MIN_SCALE) 0 else WidgetGrid.columnCount(gridWidthDp / scale)
+    val grid = remember(habit.id, habit.colorHex, columns, today, entry.completions, scale) {
+        WidgetGrid.render(density, columns, today, entry.completions, color, scale)
     }
-    val check = remember(habit.colorHex, done, density) {
-        WidgetCheck.render(context, density, done, color)
+    val check = remember(habit.colorHex, done, density, scale) {
+        WidgetCheck.render(context, density, done, color, scale)
     }
 
     Row(
@@ -184,25 +200,28 @@ private fun HabitRow(entry: WidgetHabit, today: LocalDate, modifier: GlanceModif
         verticalAlignment = Alignment.Vertical.CenterVertically,
     ) {
         Row(
-            modifier = GlanceModifier.width(LABEL_WIDTH_DP.dp),
+            modifier = GlanceModifier.width(labelWidth.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
             Image(
                 provider = ImageProvider(HabitIcons.resolve(habit.iconKey)),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(ColorProvider(color)),
-                modifier = GlanceModifier.size(14.dp),
+                modifier = GlanceModifier.size((WidgetRow.ICON_DP * scale).dp),
             )
             Text(
                 text = habit.name,
                 maxLines = 1,
-                style = TextStyle(color = ColorProvider(ShabitTextPrimary), fontSize = 11.sp),
-                modifier = GlanceModifier.padding(start = 4.dp),
+                style = TextStyle(
+                    color = ColorProvider(ShabitTextPrimary),
+                    fontSize = (WidgetRow.NAME_SP * scale).sp,
+                ),
+                modifier = GlanceModifier.padding(start = (WidgetRow.LABEL_GAP_DP * scale).dp),
             )
         }
 
         Box(
-            modifier = GlanceModifier.defaultWeight().padding(horizontal = 4.dp),
+            modifier = GlanceModifier.defaultWeight().padding(horizontal = (gaps / 2).dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
             if (grid != null) {
@@ -216,7 +235,7 @@ private fun HabitRow(entry: WidgetHabit, today: LocalDate, modifier: GlanceModif
 
         Box(
             modifier = GlanceModifier
-                .size(WidgetCheck.SIZE_DP.dp)
+                .size(checkSize.dp)
                 .clickable(
                     actionRunCallback<ToggleHabitAction>(
                         ToggleHabitAction.parametersFor(habit.id),

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.util.DisplayMetrics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
@@ -31,10 +32,20 @@ internal object WidgetCheck {
     private const val TICK_INSET_DP = 7f
     private const val MAX_SCALE = 2f
 
-    fun render(context: Context, density: Float, done: Boolean, color: Color): Bitmap {
-        val scale = min(density, MAX_SCALE)
+    fun render(
+        context: Context,
+        density: Float,
+        done: Boolean,
+        color: Color,
+        uiScale: Float = 1f,
+    ): Bitmap {
+        val pixels = min(density, MAX_SCALE)
+        val scale = uiScale * pixels
         val side = (SIZE_DP * scale).roundToInt().coerceAtLeast(1)
         val bitmap = createBitmap(side, side)
+        // The button grows with its row, so the bitmap has to carry the density it was
+        // drawn at rather than the device's — same reasoning as WidgetGrid.MAX_SCALE.
+        bitmap.density = (pixels * DisplayMetrics.DENSITY_DEFAULT).roundToInt()
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color.toArgb() }
         val corner = CORNER_DP * scale
